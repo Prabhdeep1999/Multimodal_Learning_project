@@ -1,0 +1,5 @@
+import subprocess
+
+my_list = ['4wdeBJ39Cuw', '4yr_etbfZtQ', '5VPK1NPQGUs', '64mWOoj68qo', '6M6pAh-HhMc', '6N_wxYN_H3A', '7oi9IQwXhHQ', '8DMkk6bFrUE', '8Kx0qYRv8XQ', '97AUfvzQ_1E', '9GNlkpTJW9M', '9VVdihKALKU', '9jRkACywckE', '9kLNVTm3Z90', '9yEQNadkc0M', 'A8Tw5xASluI', 'AHiA9hohKr8', 'ARD5AUnl7_M', 'AgLQ3qTL-t0', 'AiIrjf-s128']
+for vid_name in my_list:
+    subprocess.run(["scp", f"admin-guest@iquibalh-desktop.andrew.cmu.edu:/home/admin-guest/Documents/ml-project/Social-IQ-2.0-Challenge/siq2/video/{vid_name}.mp4", "."])
