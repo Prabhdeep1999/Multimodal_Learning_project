@@ -142,40 +142,7 @@ def evaluate(
     for i_batch, batch_dict in enumerate(
         metric_logger.log_every(data_loader, args.print_freq, header)
     ):
-        video_tensor = batch_dict["video"].to(device)
-        # 2. Shuffled frames in the video
-        if args.shuffle:
-            # We shuffle along the frames dimension which is at index 1 for the video tensor
-            shuffled_video = video_tensor.clone()
-            shuffled_frames = shuffled_video[:, torch.randperm(shuffled_video.size(1)), :]
-            video = shuffled_frames
-        # 3. Reversed video, i.e., the starting frame is the last frame
-        elif args.reverse:
-            # We reverse along the frames dimension which is at index 1 for the video tensor
-            reversed_video = video_tensor.clone()
-            reversed_frames = torch.flip(reversed_video, dims=[1])
-            video = reversed_frames
-        # 4. Blackout video, i.e., blackout a certain percentage of frames
-        elif args.blackout:
-            blackout_video = video_tensor.clone()
-            blackout_ratio = args.blackout_percent / 100.0  # Convert blackout_ratio to a decimal value
-
-            # Calculate the number of frames to blackout
-            num_frames = blackout_video.size(1)
-            num_blackout_frames = int(num_frames * blackout_ratio)
-
-            # Generate a random permutation of indices
-            perm = torch.randperm(num_frames)
-
-            # Blackout the frames
-            for i in range(num_blackout_frames):
-                blackout_video[:, perm[i], :] = 0.0
-
-            video = blackout_video
-        # 1. Normal video
-        else:
-            video = video_tensor.clone()
-            
+        video = batch_dict["video"].to(device)
         video_len = batch_dict["video_len"]
         video_mask = get_mask(video_len, video.size(1)).to(device)
         text = batch_dict["text"]
@@ -209,6 +176,7 @@ def evaluate(
         else:
             preds = logits.max(1).indices
         qids = batch_dict["qid"]
+        majority_voting = torch.mode(preds).values
         types = batch_dict["type"]
         if batch_dict["answer_id"][0].item() != -1:
             answer_id = batch_dict["answer_id"].to(device)
@@ -229,6 +197,7 @@ def evaluate(
                         "gt": gt.cpu().detach().item(),
                     }
                 )
+                res[qid]['pred'] = majority_voting.cpu().detach().item()
                 res[qid][f"acc"] = agreeings[i].cpu().detach().item()
 
             dico = {"acc": agreeings.sum() / len(qids)}
@@ -241,10 +210,7 @@ def evaluate(
 
     all_res = dist.all_gather(res)
     results = reduce(lambda a, b: a.update(b) or a, all_res, {})
-    if args.combine_datasets_val == "siq2":
-        assert len(results) == len(data_loader.dataset) // 3
-    else:
-        assert len(results) == len(data_loader.dataset)
+    assert len(results) == len(data_loader.dataset) // 3
     if isinstance(next(iter(results.values())), dict):
         acc = sum(int(results[qid][f"acc"]) for qid in results) / len(results)
         if type_map is not None and len(type_map) > 1:
@@ -292,6 +258,7 @@ def main(args):
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if dist.is_main_process():
         print("number of params:", n_parameters)
+
 
     # Set up optimizer
     params_for_optimization = list(p for p in model.parameters() if p.requires_grad)

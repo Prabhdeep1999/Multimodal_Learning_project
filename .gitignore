@@ -1,0 +1,18 @@
+*.pkl
+*.vtt
+*.npy
+datasets/
+outputs/
+ml/
+tmp_dumb/
+zssiq*/
+ftsiq2*/
+out_*/
+_pycache_/
+models/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pth
+*$py.class
+```

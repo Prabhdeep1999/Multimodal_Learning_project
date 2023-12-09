@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 from tqdm import tqdm
 import argparse
-from extract.video_loader import VideoLoader
+from extract.video_loader_blank import VideoLoader
 from torch.utils.data import DataLoader
 from extract.preprocessing import Preprocessing
 from extract.random_sequence_shuffler import RandomSequenceSampler
@@ -30,7 +30,7 @@ parser.add_argument(
 parser.add_argument(
     "--num_decoding_thread",
     type=int,
-    default=3,
+    default=1,
     help="number of parallel threads for video decoding",
 )
 parser.add_argument(
@@ -68,6 +68,7 @@ with th.no_grad():
     for k, data in enumerate(loader):
         input_file = data["input"][0]
         output_file = data["output"][0]
+        # import pdb; pdb.set_trace()
         if len(data["video"].shape) > 3:
             print(
                 "Computing features of video {}/{}: {}".format(
@@ -94,3 +95,4 @@ with th.no_grad():
                 np.save(output_file, features)
         else:
             print("Video {} already processed.".format(input_file))
+        

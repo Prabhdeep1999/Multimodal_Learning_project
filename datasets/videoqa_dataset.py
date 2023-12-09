@@ -59,7 +59,7 @@ class VideoQA_Dataset(Dataset):
             print(len(self.data))
         self.use_context = use_context
         if subtitles_path:
-            self.subs = pickle.load(open(subtitles_path, "rb"))
+              self.subs = pickle.load(open(subtitles_path, "rb"))
         else:
             self.subs = None
 
@@ -79,7 +79,7 @@ class VideoQA_Dataset(Dataset):
 
     def _get_video(self, video_id):
         if video_id not in self.features:
-            print(video_id)
+            # print(video_id)
             video = th.zeros(1, self.features_dim)
         else:
             video = self.features[video_id].float()

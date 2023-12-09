@@ -242,12 +242,13 @@ def get_args_parser():
         "--siq_subtitles_path",
         default=os.path.join(DATA_DIR, name2folder["siq2"], "subtitles_trimmed.pkl"),
     )
-    
     parser.add_argument("--siq_speaking_turns_path",default=None,type=str)
 
     parser.add_argument("--use_speaking_turns_sampling",type=bool,default=False)
 
     parser.add_argument("--use_gibberish_subs",type=bool,default=False)
+
+
 
     parser.add_argument(
         "--vqa_features_path",
@@ -432,9 +433,6 @@ def get_args_parser():
     parser.add_argument(
         "--blackout_percent", default=100, type=int, help="percentage of frames to blackout"
     )
-    parser.add_argument("--use_context", action="store_true", help="zeroes like the video frames")
-
-
 
     # Distributed training parameters
     parser.add_argument(

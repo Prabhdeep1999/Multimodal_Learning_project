@@ -175,7 +175,7 @@ def evaluate(
         # 1. Normal video
         else:
             video = video_tensor.clone()
-            
+        
         video_len = batch_dict["video_len"]
         video_mask = get_mask(video_len, video.size(1)).to(device)
         text = batch_dict["text"]
@@ -209,6 +209,7 @@ def evaluate(
         else:
             preds = logits.max(1).indices
         qids = batch_dict["qid"]
+        majority_voting = torch.mode(preds).values
         types = batch_dict["type"]
         if batch_dict["answer_id"][0].item() != -1:
             answer_id = batch_dict["answer_id"].to(device)
@@ -229,6 +230,7 @@ def evaluate(
                         "gt": gt.cpu().detach().item(),
                     }
                 )
+                res[qid]['pred'] = majority_voting.cpu().detach().item()
                 res[qid][f"acc"] = agreeings[i].cpu().detach().item()
 
             dico = {"acc": agreeings.sum() / len(qids)}
@@ -241,10 +243,7 @@ def evaluate(
 
     all_res = dist.all_gather(res)
     results = reduce(lambda a, b: a.update(b) or a, all_res, {})
-    if args.combine_datasets_val == "siq2":
-        assert len(results) == len(data_loader.dataset) // 3
-    else:
-        assert len(results) == len(data_loader.dataset)
+    assert len(results) == len(data_loader.dataset) // 3
     if isinstance(next(iter(results.values())), dict):
         acc = sum(int(results[qid][f"acc"]) for qid in results) / len(results)
         if type_map is not None and len(type_map) > 1:
@@ -292,6 +291,7 @@ def main(args):
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if dist.is_main_process():
         print("number of params:", n_parameters)
+
 
     # Set up optimizer
     params_for_optimization = list(p for p in model.parameters() if p.requires_grad)

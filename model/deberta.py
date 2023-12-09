@@ -585,7 +585,7 @@ def make_log_bucket_position(relative_pos, bucket_size, max_position):
         np.ceil(np.log(abs_pos / mid) / np.log((max_position - 1) / mid) * (mid - 1))
         + mid
     )
-    bucket_pos = np.where(abs_pos <= mid, relative_pos, log_pos * sign).astype(np.int)
+    bucket_pos = np.where(abs_pos <= mid, relative_pos, log_pos * sign).astype(int)
     return bucket_pos
 
 
@@ -988,9 +988,19 @@ class DebertaV2Embeddings(nn.Module):
 
         self.features_dim = features_dim
         if self.features_dim:
+
+            # print('feature_dim---->',features_dim)
+            # print('config.hidden_size---->',config.hidden_size)
             self.linear_video = nn.Linear(features_dim, config.hidden_size)
 
     def get_video_embedding(self, video):
+        # print(f'video.shape---->{video.shape}')
+        # Split the tensor along the last dimension into two halves
+        # first_half = video[:, :, :768]
+        # second_half = video[:, :, 768:]
+        # Average the first and second halves
+        # averaged_video = (first_half + second_half) / 2
+        # video = self.linear_video(averaged_video)
         video = self.linear_video(video)
         return video
 

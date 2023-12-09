@@ -23,9 +23,10 @@ parser.add_argument(
         "msrvtt",
         "msvd",
         "activitynet",
-        "tgif",
+        "tgif", 
         "how2qa",
         "tvqa",
+        "siq2"
     ],
 )
 parser.add_argument(
@@ -38,7 +39,7 @@ parser.add_argument(
 args = parser.parse_args()
 files = os.listdir(args.folder)
 files = [x for x in files if x[-4:] == ".npy"]
-
+print(files)
 # Get mapping from feature file name to dataset video_id
 if args.dataset == "msrvtt":
     mapping = {x: int(x.split(".")[0][5:]) for x in files}
@@ -57,6 +58,12 @@ elif args.dataset in ["ivqa", "activitynet"]:
 elif args.dataset in ["lsmdc", "tgif", "how2qa"]:
     mapping = {x: x[:-8] for x in files}
 
+elif args.dataset in ["siq2"]:
+    if "anony" in files[0]:
+        mapping = {f: f[:-10] for f in files}
+    else:
+        mapping = {f: f[:-4] for f in files}
+
 elif args.dataset == "tvqa":
     mapping = {}
     for i, row in pd.read_csv(os.path.join(DATA_DIR, "TVQA/feat_mapping.csv")):
@@ -71,6 +78,7 @@ elif args.dataset == "tvqa":
 
 else:
     raise NotImplementedError
+print(mapping)
 
 features = {}
 for i in tqdm(range(len(files))):
