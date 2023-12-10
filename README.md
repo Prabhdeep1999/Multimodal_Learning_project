@@ -291,3 +291,56 @@ author = {Antoine Yang and Antoine Miech and Josef Sivic and Ivan Laptev and Cor
 booktitle={NeurIPS}
 year = {2022}}
 ```
+
+# Export cache
+export TRANSFORMERS_CACHE=transformers_cache/
+
+# Run ablation studie on How2QA, with --shuffle, --reverse or --blackout. Dont put anything for correct video input
+python -m torch.distributed.launch --nproc_per_node 2 --use_env mc.py --eval --combine_datasets how2qa --combine_datasets_val how2qa --save_dir=zssiq --ds_factor_ff=8 --ds_factor_attn=8 --suffix="." --batch_size_val=32 --max_tokens=512 --load=models/frozenbilm_how2qa.pth --blackout
+
+# Run ablation studie on SIQ2, with --shuffle, --reverse or --blackout. Dont put anything for correct video input
+python -m torch.distributed.launch --nproc_per_node 2 --use_env mc_siq2.py --eval --combine_datasets siq2 --combine_datasets_val siq2 --save_dir=ml/ft_siq2_0 --ds_factor_ff=8 --ds_factor_attn=8 --suffix="." --batch_size_val=32 --max_tokens=512 --load=ftsiq2/best_model.pth --blackout --blackout_percent=0
+
+
+
+# Predict siq2
+python -m torch.distributed.launch --nproc_per_node 2 --use_env mc.py --eval --combine_datasets siq2 --combine_datasets_val siq2 --save_dir=zssiq --ds_factor_ff=8 --ds_factor_attn=8 --suffix="." --batch_size_val=32 --max_tokens=512 --load=models/frozenbilm_how2qa.pth
+
+# Finetune siq2
+python -m torch.distributed.launch --nproc_per_node 2 --use_env mc.py --combine_datasets siq2 --combine_datasets_val siq2 --save_dir=ftsiq2 --lr=5e-5 --schedule=linear_with_warmup --load=models/frozenbilm.pth --ds_factor_ff=8 --ds_factor_attn=8 --suffix="." --batch_size=2 --batch_size_val=8 --max_tokens=256 --epochs=20 
+
+
+# Finetune siq2 with gpu1 and turns
+CUDA_VISIBLE_DEVICES=1 python mc_siq.py --combine_datasets siq2 --combine_datasets_val siq2 --save_dir=ftsiq2_turns --lr=5e-5 --schedule=linear_with_warmup --load=models/frozenbilm.pth --ds_factor_ff=8 --ds_factor_attn=8 --suffix="." --batch_size=2 --batch_size_val=8 --max_tokens=256 --epochs=20 --siq_speaking_turns_path=datasets/SIQ2/turn_information.pkl 2>&1 | tee ftsiq2_turns/output.log
+
+
+# Results
+FrozenBILM finetuned on How2qa; ablation studies on How2qa dataset:
+1. Correct video: 86.32
+2. Shuffled video frames: 85.37
+3. Reversed video frames: 84.39
+4. 10% randomly blackedout: 
+5. 20% randomly blackedout: 
+6. 30% randomly blackedout: 85.65
+7. 40% randomly blackedout: 85.47
+8. 50% randomly blackedout: 85.16
+9. 60% randomly blackedout: 84.56
+10. 70% randomly blackedout: 83.68
+11. 80% randomly blackedout: 83.16
+12. 90% randomly blackedout: 80.77
+13. 100% blackedout video: 76.25
+
+FrozenBILM finetuned on SIQ2; ablation studies on SIQ2 dataset:
+1. Correct video: 78.97
+2. Shuffled video frames: 79.54
+3. Reversed video frames: 79.43
+4. 10% randomly blackedout: 
+5. 20% randomly blackedout: 
+6. 30% randomly blackedout: 85.65
+7. 40% randomly blackedout: 85.47
+8. 50% randomly blackedout: 85.16
+9. 60% randomly blackedout: 84.56
+10. 70% randomly blackedout: 83.68
+11. 80% randomly blackedout: 83.16
+12. 90% randomly blackedout: 80.77
+13. 100% blackedout video: 79.31

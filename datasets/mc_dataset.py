@@ -12,6 +12,7 @@ class MC_Dataset(Dataset):
         csv_path,
         subtitles_path,
         features_path,
+        speaking_turns_path,
         max_feats=10,
         features_dim=768,
         tokenizer=None,
@@ -25,6 +26,10 @@ class MC_Dataset(Dataset):
             self.subs = pickle.load(open(subtitles_path, "rb"))
         else:
             self.subs = None
+        if speaking_turns_path:
+            self.speaking_turns = pickle.load(open(speaking_turns_path, "rb"))
+        else:
+            self.speaking_turns = None
         self.features = th.load(features_path)
         self.max_feats = max_feats
         self.features_dim = features_dim
@@ -61,7 +66,6 @@ class MC_Dataset(Dataset):
 
     def _get_video(self, video_id, start, end):
         if video_id not in self.features:
-            print(video_id)
             video = th.zeros(1, self.features_dim)
         else:
             if start is not None and not math.isnan(start):
@@ -71,20 +75,113 @@ class MC_Dataset(Dataset):
             if not len(video):
                 print(video_id, start, end)
                 video = th.zeros(1, self.features_dim)
-        if len(video) > self.max_feats:
-            sampled = []
-            for j in range(self.max_feats):
-                sampled.append(video[(j * len(video)) // self.max_feats])
-            video = th.stack(sampled)
-            video_len = self.max_feats
-        elif len(video) < self.max_feats:
-            video_len = len(video)
-            video = th.cat(
-                [video, th.zeros(self.max_feats - video_len, self.features_dim)], 0
-            )
-        else:
-            video_len = self.max_feats
+        # print(f'len(video): {len(video)}')
+        if self.speaking_turns is not None:                
+            # Retrieve and filter speaking turns for the video_id within start and end
+            all_speaking_turns = self.speaking_turns.get(video_id, [])
+            # speaking_turns = [turn for turn in all_speaking_turns if float(turn[0]) >= start and float(turn[1]) <= end]
 
+            # Crop speaking turns to the video segment between start and end
+            cropped_speaking_turns = []
+            for turn in all_speaking_turns:
+                turn_start, turn_end = max(float(turn[0]), start), min(float(turn[1]), end)
+                # Only add the turn if there is an overlap with the video segment
+                if turn_start < turn_end:
+                    cropped_speaking_turns.append([turn_start, turn_end] + turn[2:])
+
+
+            # Convert string times to floats and calculate durations
+            turns_with_durations = [(turn_start, turn_end, turn_end - turn_start, speaker)
+                                    for turn_start, turn_end, speaker in cropped_speaking_turns]
+
+            # Sort by duration to prioritize longer speaking turns
+            turns_with_durations.sort(key=lambda x: x[2], reverse=True)
+
+            if len(turns_with_durations) > self.max_feats:
+                turns_with_durations = turns_with_durations[:self.max_feats]
+
+            # Restore original order
+            turns_with_durations.sort(key=lambda x: cropped_speaking_turns.index([x[0], x[1], x[3]]))
+            video_segments = []
+            total_frames = 0
+            
+            for start, end, _,_ in turns_with_durations:
+                segment_len = int(end) - int(start) + 1
+                total_frames += segment_len
+                video_segments.append(self.features[video_id][int(start):int(end) + 1].float())
+            # print(f"total_frames: {total_frames}")
+            if total_frames > self.max_feats:
+                sampled_video = []
+                remaining_frames = self.max_feats
+                for segment in video_segments:
+                    segment_len = len(segment)
+                    # Calculate frames to sample, weighted by segment length
+                    if remaining_frames > 1:  # Avoid division by zero in the last segment
+                        frames_to_sample = max(1, round(segment_len / total_frames * remaining_frames))
+                    else:
+                        frames_to_sample = remaining_frames  # Assign any remaining frames to the last segment
+
+                    # Ensure we do not sample more frames than are available in the segment
+                    frames_to_sample = min(frames_to_sample, segment_len)
+
+                    sampled = [segment[(j * segment_len) // frames_to_sample] for j in range(frames_to_sample)]
+                    sampled_video.extend(sampled)
+
+                    # Update the count of total and remaining frames
+                    total_frames -= segment_len
+                    remaining_frames -= frames_to_sample
+                # print(f"sampled_video len: {len(sampled_video)}")
+                video = th.stack(sampled_video)
+                # video_len = self.max_feats
+                # video_len = len(sampled_video)
+                # print(f"video_shape before the if statements: {video.shape}")
+                # if len(video) > self.max_feats:
+                #     sampled = []
+                #     for j in range(self.max_feats):
+                #         sampled.append(video[(j * len(video)) // self.max_feats])
+                #     video = th.stack(sampled)
+                #     video_len = self.max_feats
+                #     print("len(video) > self.max_feats")
+                # elif len(video) < self.max_feats:
+                #     video_len = len(video)
+                #     video = th.cat(
+                #         [video, th.zeros(self.max_feats - video_len, self.features_dim)], 0
+                #     )
+                #     print("len(video) < self.max_feats")
+                # else:
+                #     print("len(video) = self.max_feats")
+                video_len = self.max_feats
+            else:
+                # print("total_frames <= self.max_feats")
+                if len(video) > self.max_feats:
+                    sampled = []
+                    for j in range(self.max_feats):
+                        sampled.append(video[(j * len(video)) // self.max_feats])
+                    video = th.stack(sampled)
+                    video_len = self.max_feats
+                elif len(video) < self.max_feats:
+                    video_len = len(video)
+                    video = th.cat(
+                        [video, th.zeros(self.max_feats - video_len, self.features_dim)], 0
+                    )
+                else:
+                    video_len = self.max_feats
+
+        else:
+            if len(video) > self.max_feats:
+                sampled = []
+                for j in range(self.max_feats):
+                    sampled.append(video[(j * len(video)) // self.max_feats])
+                video = th.stack(sampled)
+                video_len = self.max_feats
+            elif len(video) < self.max_feats:
+                video_len = len(video)
+                video = th.cat(
+                    [video, th.zeros(self.max_feats - video_len, self.features_dim)], 0
+                )
+            else:
+                video_len = self.max_feats
+        # print(f"video_shape: {video.shape}, video_len: {video_len}")
         return video, video_len
 
     def __getitem__(self, idx):
@@ -180,6 +277,18 @@ def build_mc_dataset(dataset_name, split, args, tokenizer):
             raise NotImplementedError
         subtitles_path = args.tvqa_subtitles_path
         features_path = args.tvqa_features_path
+    elif dataset_name == "siq2":
+        if split == "train":
+            csv_path = args.siq_train_csv_path
+        elif split == "val":
+            csv_path = args.siq_val_csv_path
+        elif split == "test":
+            csv_path = args.siq_test_csv_path
+        else:
+            raise NotImplementedError
+        subtitles_path = args.siq_subtitles_path
+        features_path = args.siq_features_path
+        speaking_turns_path = args.siq_speaking_turns_path
     else:
         raise NotImplementedError
     return MC_Dataset(
@@ -193,4 +302,5 @@ def build_mc_dataset(dataset_name, split, args, tokenizer):
         prefix=args.prefix,
         suffix=args.suffix,
         type_map=type_map,
+        speaking_turns_path=speaking_turns_path if dataset_name == "siq2" else None,
     )

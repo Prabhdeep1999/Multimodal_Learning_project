@@ -55,7 +55,7 @@ class VideoQA_Dataset(Dataset):
 
     def _get_video(self, video_id):
         if video_id not in self.features:
-            print(video_id)
+            # print(video_id)
             video = th.zeros(1, self.features_dim)
         else:
             video = self.features[video_id].float()

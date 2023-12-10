@@ -25,7 +25,7 @@ class VQA_Dataset(Dataset):
         self.max_feats = max_feats
         self.features_dim = features_dim
         self.a2id = json.load(open(vocab_path, "r"))
-        print(len(data))
+        # print(len(data))
         self.data = []
         for idx in range(len(self.data)):
             answer = data[idx]["answer"]
@@ -35,7 +35,7 @@ class VQA_Dataset(Dataset):
                     ok = True
             if ok:
                 self.data.append(data[idx])
-        print(len(self.data))
+        # print(len(self.data))
         self.train = train
         self.prefix = prefix
         self.suffix = suffix

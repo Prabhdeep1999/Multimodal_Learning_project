@@ -2,8 +2,8 @@ import argparse
 import os
 
 PRESAVE_DIR = ""
-MODEL_DIR = ""
-DATA_DIR = ""
+MODEL_DIR = "/home/admin-guest/Documents/multimodal-ml/iqui/FrozenBiLM/models/"
+DATA_DIR = "/home/admin-guest/Documents/multimodal-ml/iqui/FrozenBiLM/datasets/"
 SSD_DIR = ""
 name2folder = {
     "webvid": "WebVid",
@@ -16,6 +16,7 @@ name2folder = {
     "how2qa": "How2QA",
     "tvqa": "TVQA",
     "vqa": "VQA",
+    "siq2": "SIQ2",
 }
 
 
@@ -219,6 +220,33 @@ def get_args_parser():
         "--tvqa_subtitles_path",
         default=os.path.join(DATA_DIR, name2folder["tvqa"], "subtitles.pkl"),
     )
+    
+
+    parser.add_argument(
+        "--siq_features_path",
+        default=os.path.join(DATA_DIR, name2folder["siq2"], "clipvitl14.pth"),
+    )
+    parser.add_argument(
+        "--siq_train_csv_path",
+        default=os.path.join(DATA_DIR, name2folder["siq2"], "train.csv"),
+    )
+    parser.add_argument(
+        "--siq_val_csv_path",
+        default=os.path.join(DATA_DIR, name2folder["siq2"], "public_valx3.csv"),
+    )
+    parser.add_argument(
+        "--siq_test_csv_path",
+        default=os.path.join(DATA_DIR, name2folder["siq2"], "test_publicx3.csv"),
+    )
+    parser.add_argument(
+        "--siq_subtitles_path",
+        default=os.path.join(DATA_DIR, name2folder["siq2"], "subtitles_trimmed.pkl"),
+    )
+    parser.add_argument("--siq_speaking_turns_path",default=None,type=str)
+
+
+
+
     parser.add_argument(
         "--vqa_features_path",
         default=os.path.join(DATA_DIR, name2folder["vqa"], "clipvitl14.pth"),
@@ -394,6 +422,13 @@ def get_args_parser():
     parser.add_argument("--eval", action="store_true", help="only run evaluation")
     parser.add_argument(
         "--num_workers", default=3, type=int, help="number of workers for dataloader"
+    )
+    # Arguments for ablation studies
+    parser.add_argument("--shuffle", action="store_true", help="shuffle the video frames")
+    parser.add_argument("--reverse", action="store_true", help="reverse the video frames")
+    parser.add_argument("--blackout", action="store_true", help="zeroes like the video frames")
+    parser.add_argument(
+        "--blackout_percent", default=100, type=int, help="percentage of frames to blackout"
     )
 
     # Distributed training parameters
